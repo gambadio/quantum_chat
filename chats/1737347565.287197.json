@@ -1,0 +1,13 @@
+{
+  "id": "1737347565.287197",
+  "name": "New Chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "test",
+      "timestamp": "2025-01-20T05:32:47.736645"
+    }
+  ],
+  "is_favorite": false,
+  "timestamp": "2025-01-20T05:32:45.287232"
+}

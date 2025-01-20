@@ -34,22 +34,29 @@ class QuantumChat:
         self.load_chats()
 
     def load_svgs(self):
+        # Get the absolute path to the assets directory
+        base_dir = Path(__file__).parent.parent
+        assets_dir = base_dir / 'assets' / 'images'
+        
         svg_paths = {
-            'delete': ('assets/images/delete_icon.svg', (20, 20)),
-            'edit': ('assets/images/edit_icon.svg', (20, 20)),
-            'favorite': ('assets/images/favorite_icon.svg', (20, 20)),
-            'logo': ('assets/images/logo.svg', (80, 80)),  # Much larger logo
-            'new_chat': ('assets/images/new_chat_icon.svg', (24, 24)),
-            'quantum_title': ('assets/images/quantum_title.svg', (300, 60)),  # Much larger title
-            'robot': ('assets/images/robot_avatar.svg', (30, 30)),
-            'star_empty': ('assets/images/star_empty.svg', (20, 20)),
-            'star': ('assets/images/star.svg', (20, 20)),
-            'user': ('assets/images/user_avatar.svg', (30, 30)),
-            'settings': ('assets/images/settings_icon.svg', (24, 24))
+            'delete': ('delete_icon.svg', (20, 20)),
+            'edit': ('edit_icon.svg', (20, 20)),
+            'favorite': ('favorite_icon.svg', (20, 20)),
+            'logo': ('logo.svg', (80, 80)),
+            'new_chat': ('new_chat_icon.svg', (24, 24)),
+            'quantum_title': ('quantum_title.svg', (300, 60)),
+            'robot': ('robot_avatar.svg', (30, 30)),
+            'star_empty': ('star_empty.svg', (20, 20)),
+            'star': ('star.svg', (20, 20)),
+            'user': ('user_avatar.svg', (30, 30))
         }
         
-        for key, (path, size) in svg_paths.items():
-            self.svg_images[key] = self.styles.load_svg_image(path, size)
+        for key, (filename, size) in svg_paths.items():
+            path = assets_dir / filename
+            if path.exists():
+                self.svg_images[key] = self.styles.load_svg_image(str(path), size)
+            else:
+                print(f"Warning: SVG file not found: {path}")
 
     def setup_gui(self):
         # Main container with rounded corners
@@ -100,16 +107,14 @@ class QuantumChat:
         )
         new_chat_btn.pack(fill=tk.X, padx=20, pady=(0, 20))
 
-        # Chat list container
+        # Chat list container with rounded corners
         self.chat_list_frame = ttk.Frame(self.sidebar, style='ChatList.TFrame')
         self.chat_list_frame.pack(fill=tk.BOTH, expand=True, padx=20)
         
-        # Settings button
+        # Settings button (text only)
         settings_btn = ttk.Button(
             self.sidebar,
             text="Settings",
-            image=self.svg_images['settings'],
-            compound=tk.LEFT,
             command=self.show_settings,
             style='Settings.TButton'
         )
@@ -118,6 +123,14 @@ class QuantumChat:
     def setup_chat_area(self):
         self.chat_area = ttk.Frame(self.paned, style='ChatArea.TFrame')
         self.paned.add(self.chat_area, weight=3)
+
+        # Current chat label at top
+        self.current_chat_label = ttk.Label(
+            self.chat_area,
+            text="",
+            style="CurrentChat.TLabel"
+        )
+        self.current_chat_label.pack(anchor=tk.W, padx=20, pady=(10,0))
         
         # Messages canvas with rounded corners
         self.messages_canvas = tk.Canvas(
@@ -128,7 +141,16 @@ class QuantumChat:
         )
         self.messages_canvas.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
-        # Input area
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(
+            self.chat_area,
+            orient=tk.VERTICAL,
+            command=self.messages_canvas.yview
+        )
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.messages_canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Input area with rounded corners
         self.input_frame = ttk.Frame(self.chat_area, style='Input.TFrame')
         self.input_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
         
@@ -148,19 +170,19 @@ class QuantumChat:
         send_btn.pack(side=tk.RIGHT)
 
     def create_new_chat(self):
-        chat_id = str(datetime.now().timestamp())
-        new_chat = {
-            'id': chat_id,
-            'name': f'New Chat',
-            'messages': [],
-            'is_favorite': False,
-            'timestamp': datetime.now().isoformat()
-        }
-        self.chats[chat_id] = new_chat
-        self.chat_order.add_chat(chat_id)
-        self.save_chat(new_chat)
-        self.select_chat(chat_id)
-        self.update_chat_list()
+            chat_id = str(datetime.now().timestamp())
+            new_chat = {
+                'id': chat_id,
+                'name': f'New Chat',
+                'messages': [],
+                'is_favorite': False,
+                'timestamp': datetime.now().isoformat()
+            }
+            self.chats[chat_id] = new_chat
+            self.chat_order.add_chat(chat_id)
+            self.save_chat(new_chat)
+            self.select_chat(chat_id)
+            self.update_chat_list()
 
     def load_chats(self):
         chat_dir = Path('chats')
@@ -195,7 +217,8 @@ class QuantumChat:
         commands = {
             'favorite': lambda e: self.toggle_favorite(chat_data['id']),
             'edit': lambda e: self.rename_chat(chat_data['id']),
-            'delete': lambda e: self.delete_chat(chat_data['id'])
+            'delete': lambda e: self.delete_chat(chat_data['id']),
+            'select_chat': lambda e: self.select_chat(chat_data['id'])  # Add this line
         }
         
         frame = self.styles.create_chat_tab(
@@ -205,12 +228,39 @@ class QuantumChat:
             commands
         )
         frame.pack(fill=tk.X, pady=2)
-        frame.bind('<Button-1>', lambda e: self.select_chat(chat_data['id']))
+        
+        # Bind click event to the entire frame
+        frame.bind('<Button-1>', commands['select_chat'])  # Change this line
+
 
     def select_chat(self, chat_id):
         self.current_chat_id = chat_id
-        self.update_messages_display()
-        self.input.focus_set()
+        self.messages_canvas.delete('all')
+
+        if chat_id in self.chats:
+            chat = self.chats[chat_id]
+            # Update label to show which chat is loaded
+            self.current_chat_label.config(text=f"Chat: {chat['name']}")
+            self.update_messages_display()
+            
+            self.input.focus_set()
+            self.messages_canvas.yview_moveto(1.0)
+
+        
+        # Clear current messages display
+        self.messages_canvas.delete('all')
+        
+        # Load and display chat messages
+        if chat_id in self.chats:
+            chat = self.chats[chat_id]
+            # Update messages display
+            self.update_messages_display()
+            
+            # Set focus to input field
+            self.input.focus_set()
+            
+            # Scroll to bottom of messages
+            self.messages_canvas.yview_moveto(1.0)
 
     def toggle_favorite(self, chat_id):
         chat = self.chats[chat_id]
@@ -291,7 +341,7 @@ class QuantumChat:
 
     def update_messages_display(self):
         self.messages_canvas.delete('all')
-        if not self.current_chat_id:
+        if not self.current_chat_id or self.current_chat_id not in self.chats:
             return
 
         y_pos = 20
@@ -302,13 +352,13 @@ class QuantumChat:
             
             # Calculate positions
             canvas_width = self.messages_canvas.winfo_width()
-            bubble_width = min(canvas_width * 0.7, 500)  # Max width for messages
+            bubble_width = min(canvas_width * 0.7, 500)
             
             if is_user:
-                bubble_x = canvas_width - bubble_width - 60  # Right align
+                bubble_x = canvas_width - bubble_width - 60
                 avatar_x = canvas_width - 40
             else:
-                bubble_x = 60  # Left align
+                bubble_x = 60
                 avatar_x = 30
             
             # Add avatar
@@ -354,28 +404,33 @@ class QuantumChat:
             
             y_pos += 100
 
-        # Scroll to bottom
+        # Update scroll region and scroll to bottom
         self.messages_canvas.configure(scrollregion=self.messages_canvas.bbox("all"))
+        self.messages_canvas.yview_moveto(1.0)
 
     def show_settings(self):
         settings_window = tk.Toplevel(self.root)
         settings_window.title("Settings")
-        settings_window.geometry("800x600")
-        settings_window.configure(bg=COLORS['bg_main'])
+        settings_window.geometry("800x700")
+        settings_window.configure(bg=COLORS['bg_settings'])
         
-        # Model Connection Frame
-        connection_frame = ttk.Frame(settings_window, style='Settings.TFrame')
-        connection_frame.pack(fill=tk.X, padx=20, pady=10)
+        # Main container with padding
+        main_frame = ttk.Frame(settings_window, style='Settings.TFrame', padding=30)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Model Connection Section
+        connection_section = ttk.Frame(main_frame, style='SettingsSection.TFrame')
+        connection_section.pack(fill=tk.X, pady=(0, 20))
         
         ttk.Label(
-            connection_frame,
+            connection_section,
             text="Model Connection",
             style='SettingsHeader.TLabel'
-        ).pack(anchor=tk.W, pady=(0, 10))
+        ).pack(anchor=tk.W)
         
         # Ollama API URL
-        url_frame = ttk.Frame(connection_frame)
-        url_frame.pack(fill=tk.X, pady=5)
+        url_frame = ttk.Frame(connection_section, style='Settings.TFrame')
+        url_frame.pack(fill=tk.X, pady=(15, 10))
         
         ttk.Label(
             url_frame,
@@ -388,11 +443,11 @@ class QuantumChat:
             style='Settings.TEntry'
         )
         url_entry.insert(0, self.settings.get('api_url', "http://localhost:11434/v1"))
-        url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+        url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(15, 0))
         
         # Model Selection
-        model_frame = ttk.Frame(connection_frame)
-        model_frame.pack(fill=tk.X, pady=5)
+        model_frame = ttk.Frame(connection_section, style='Settings.TFrame')
+        model_frame.pack(fill=tk.X, pady=10)
         
         ttk.Label(
             model_frame,
@@ -409,19 +464,19 @@ class QuantumChat:
             state='readonly',
             style='Settings.TCombobox'
         )
-        model_dropdown.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+        model_dropdown.pack(side=tk.LEFT, padx=(15, 0), fill=tk.X, expand=True)
         
-        # Model Parameters Frame
-        params_frame = ttk.Frame(settings_window, style='Settings.TFrame')
-        params_frame.pack(fill=tk.X, padx=20, pady=10)
+        # Model Parameters Section
+        params_section = ttk.Frame(main_frame, style='SettingsSection.TFrame')
+        params_section.pack(fill=tk.X, pady=20)
         
         ttk.Label(
-            params_frame,
+            params_section,
             text="Model Parameters",
             style='SettingsHeader.TLabel'
-        ).pack(anchor=tk.W, pady=(0, 10))
+        ).pack(anchor=tk.W)
         
-        # Parameter sliders with better styling
+        # Parameter sliders
         params = [
             ("Temperature", "temperature", 0.0, 1.0),
             ("Max Tokens", "max_tokens", 100, 4000),
@@ -431,20 +486,20 @@ class QuantumChat:
         ]
         
         for label, key, min_val, max_val in params:
-            param_frame = ttk.Frame(params_frame)
-            param_frame.pack(fill=tk.X, pady=5)
+            param_frame = ttk.Frame(params_section, style='Settings.TFrame')
+            param_frame.pack(fill=tk.X, pady=10)
             
             ttk.Label(
                 param_frame,
                 text=f"{label}:",
                 style='Settings.TLabel'
-            ).pack(side=tk.LEFT, padx=(0, 10))
+            ).pack(side=tk.LEFT)
             
             value_var = tk.StringVar(value=f"{self.settings['model_settings'][key]:.2f}")
             value_label = ttk.Label(
                 param_frame,
                 textvariable=value_var,
-                style='SettingsValue.TLabel'
+                style='Settings.TLabel'
             )
             value_label.pack(side=tk.RIGHT, padx=(10, 0))
             
@@ -454,20 +509,111 @@ class QuantumChat:
                 to=max_val,
                 value=self.settings['model_settings'][key],
                 command=lambda v, var=value_var: var.set(f"{float(v):.2f}"),
-                style='Settings.TScale'
+                style='Settings.Horizontal.TScale'
             )
-            scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(15, 15))
+            setattr(self, f'scale_{key}', scale)
+        
+        # Memory Settings Section
+        memory_section = ttk.Frame(main_frame, style='SettingsSection.TFrame')
+        memory_section.pack(fill=tk.X, pady=20)
+        
+        ttk.Label(
+            memory_section,
+            text="Memory Settings",
+            style='SettingsHeader.TLabel'
+        ).pack(anchor=tk.W)
+        
+        # Buffer Size
+        buffer_frame = ttk.Frame(memory_section, style='Settings.TFrame')
+        buffer_frame.pack(fill=tk.X, pady=10)
+        
+        ttk.Label(
+            buffer_frame,
+            text="Buffer Size:",
+            style='Settings.TLabel'
+        ).pack(side=tk.LEFT)
+        
+        buffer_var = tk.StringVar(value=str(self.settings['memory_settings']['buffer_size']))
+        buffer_entry = ttk.Entry(
+            buffer_frame,
+            textvariable=buffer_var,
+            style='Settings.TEntry',
+            width=10
+        )
+        buffer_entry.pack(side=tk.LEFT, padx=(15, 0))
+        
+        # Summary Settings
+        summary_frame = ttk.Frame(memory_section, style='Settings.TFrame')
+        summary_frame.pack(fill=tk.X, pady=10)
+        
+        summary_enabled = tk.BooleanVar(value=self.settings['memory_settings']['summary_enabled'])
+        summary_check = ttk.Checkbutton(
+            summary_frame,
+            text="Enable Summary Memory",
+            variable=summary_enabled,
+            style='Settings.TCheckbutton'
+        )
+        summary_check.pack(side=tk.LEFT)
+        
+        # Buttons
+        button_frame = ttk.Frame(main_frame, style='Settings.TFrame')
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(20, 0))
+        
+        save_btn = ttk.Button(
+            button_frame,
+            text="Save",
+            command=lambda: self.save_settings(
+                settings_window,
+                url_entry.get(),
+                model_var.get(),
+                {
+                    'temperature': float(self.scale_temperature.value_var.get()),
+                    'max_tokens': int(float(self.scale_max_tokens.value_var.get())),
+                    'top_p': float(self.scale_top_p.value_var.get()),
+                    'frequency_penalty': float(self.scale_frequency_penalty.value_var.get()),
+                    'presence_penalty': float(self.scale_presence_penalty.value_var.get())
+                },
+                {
+                    'buffer_size': int(buffer_var.get()),
+                    'summary_enabled': summary_enabled.get()
+                }
+            ),
+            style='SettingsButton.TButton'
+        )
+        save_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        cancel_btn = ttk.Button(
+            button_frame,
+            text="Cancel",
+            command=settings_window.destroy,
+            style='SettingsButton.TButton'
+        )
+        cancel_btn.pack(side=tk.RIGHT)
 
-    def update_setting(self, key, value, label=None):
-        self.settings['model_settings'][key] = value
-        if label:
-            label.configure(text=f"{value:.2f}")
+        # Center the window on screen
+        settings_window.transient(self.root)
+        settings_window.grab_set()
+        
+        # Calculate position
+        x = self.root.winfo_x() + (self.root.winfo_width() - 800) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 700) // 2
+        settings_window.geometry(f"+{x}+{y}")
 
-    def save_settings(self, window, api_url, model):
+    def save_settings(self, window, api_url, model, model_params, memory_params):
+        # Update settings
         self.settings['api_url'] = api_url
         self.settings['model_settings']['model'] = model
+        self.settings['model_settings'].update(model_params)
+        self.settings['memory_settings'].update(memory_params)
+        
+        # Save to file
         Settings.save_settings(self.settings)
+        
+        # Update LLM
         self.llm.update_settings(self.settings)
+        
+        # Close settings window
         window.destroy()
 
     def run(self):
