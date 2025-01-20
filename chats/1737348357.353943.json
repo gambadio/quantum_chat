@@ -1,0 +1,18 @@
+{
+  "id": "1737348357.353943",
+  "name": "gambo",
+  "messages": [
+    {
+      "role": "user",
+      "content": "just say hello",
+      "timestamp": "2025-01-20T05:46:08.605722"
+    },
+    {
+      "role": "system",
+      "content": "Error: 'QuantumChat' object has no attribute 'ai'",
+      "timestamp": "2025-01-20T05:46:08.610328"
+    }
+  ],
+  "is_favorite": false,
+  "timestamp": "2025-01-20T05:45:57.353984"
+}

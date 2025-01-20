@@ -1,0 +1,18 @@
+{
+  "id": "1737348045.052337",
+  "name": "test chat",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hello",
+      "timestamp": "2025-01-20T05:40:57.320291"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! How can I assist you today? Feel free to ask me anything or let me know if you have any questions.",
+      "timestamp": "2025-01-20T05:41:01.881576"
+    }
+  ],
+  "is_favorite": false,
+  "timestamp": "2025-01-20T05:40:45.052351"
+}

@@ -296,24 +296,29 @@ class QuantumChat:
             
             self.update_chat_list()
 
-    def send_message(self):
-        if not self.current_chat_id:
-            messagebox.showinfo("Info", "Please select or create a chat first.")
-            return
-
-        message = self.input.get().strip()
-        if not message:
-            return
-
-        self.input.delete(0, tk.END)
-        self.add_message('user', message)
+    def send_message(self, event=None):
+        # Get user input and clean it
+        user_input = self.input.get().strip()  # Changed from self.input_box to self.input
         
-        # Start AI response in separate thread
+        if not user_input:
+            return
+        
+        # Clear input box
+        self.input.delete(0, tk.END)  # Changed from self.input_box to self.input
+        
+        # Display user message
+        self.add_message('user', user_input)
+        
+        # Disable input while processing
+        self.input.config(state=tk.DISABLED)  # Changed from self.input_box to self.input
+        
+        # Get AI response in a separate thread
         threading.Thread(
             target=self.get_ai_response,
-            args=(message,),
+            args=(user_input,),
             daemon=True
         ).start()
+
 
     def get_ai_response(self, user_message):
         try:
