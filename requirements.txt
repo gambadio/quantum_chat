@@ -1,0 +1,4 @@
+langchain-community>=0.0.10
+langchain-core>=0.1.0
+pillow>=10.0.0
+cairosvg>=2.7.0
