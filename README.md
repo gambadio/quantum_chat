@@ -219,7 +219,12 @@ Quantum Chat is designed to be extensible and welcomes contributions! Areas for 
 
 ## 📄 License
 
-This project is open source. Please check the repository for specific license terms.
+This project is licensed for **non-commercial use only**.
+
+**Personal Use**: Free to use, copy, and modify for private, educational, and non-commercial purposes.  
+**Commercial Use**: Prohibited without explicit written permission.
+
+For commercial licensing inquiries, please contact: **ricardo.kupper@adalala.com**
 
 ## 🌟 Acknowledgments
 
@@ -230,3 +235,5 @@ This project is open source. Please check the repository for specific license te
 ---
 
 *Built with ❤️ for the privacy-conscious AI enthusiasts who believe in local-first applications.*
+
+**© 2025 Ricardo Kupper** • Designed for those who value privacy and local AI control
