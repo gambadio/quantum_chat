@@ -1,0 +1,1 @@
+Quantum Chat is a privacy-focused desktop chat app with a cyberpunk-inspired interface that uses local AI models via Ollama. It features advanced chat management, customizable model parameters, and ensures all conversations remain private on your device—no internet required.
